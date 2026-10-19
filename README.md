@@ -44,3 +44,30 @@ print(reg.call('db.tables', path=r'<任意 .db>'))"
 - local-db 只拿得到本机同步过的副本；撤回、未同步、他端数据不在其中
 - client-drive 需要目标进程已在运行且开 CDP，不是任意软件都开
 - 加密库（如微信 v4、飞书 im.db）需要额外取密钥，不在本层范围内
+
+## Case study: WeChat 4.x — the honest "unsupported"
+
+WeChat is the counter-example that makes the contract worth something. All three
+channels were probed on a live install, and all three fail:
+
+| channel | probe | result |
+|---|---|---|
+| official-api | no public OpenAPI for personal accounts | absent |
+| local-db | 28 databases, 124,383,232 bytes | **0 plaintext**, 28 encrypted |
+| client-drive | netstat filtered by Weixin.exe PID | **0 listeners**, no CDP |
+
+The databases are SQLCipher (`cipher_compatibility`, `ATTACH ... KEY`,
+`cipher_page_size` strings located in `Weixin.dll`, 4096-byte pages), the key is
+derived at login and never written to disk. What the tool returns is
+`state: all-encrypted` plus a count — not a guess, and not a fake success.
+
+`wechat.py` also demonstrates one thing that *is* reachable without escalating:
+recovering the real data root from the running client's memory (read-only), which
+is how `C:\Users\china\xwechat_files` was found instead of the stale `D:\WeChat`.
+
+Run it:
+
+```bash
+python -c "import sys;sys.path.insert(0,'.');from wechat import reg;\
+print(reg.call('wechat.encryption_verdict', data_dir=r'C:\Users\china\xwechat_files\<wxid>'))"
+```
