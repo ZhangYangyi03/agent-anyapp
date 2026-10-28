@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: The unified manifest builds
+        run: python demo.py
+      - name: Whatever is registered carries a channel and a schema
+        run: |
+          python -c "import sys,json; sys.path.insert(0,'.'); from demo import reg; m=reg.manifest(); assert m, 'empty manifest'; assert all('channel' in t for t in m), m; print(json.dumps(m)[:200])"
